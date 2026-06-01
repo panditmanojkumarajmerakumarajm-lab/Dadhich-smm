@@ -1,0 +1,6 @@
+{
+  "name": "Dadhich SMM",
+  "description": "A high-performance, professional Social Media Marketing (SMM) Panel offering top-tier services for Instagram, Facebook, Telegram, YouTube, and other platforms.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

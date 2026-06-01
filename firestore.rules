@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper to identify the administrator ID or email
+    function isSystemAdmin(email) {
+      return email == "tiwarigautam819@gmail.com";
+    }
+
+    // 1. Settings Collection
+    match /settings/global {
+      allow read: if true; // Required for all front-end clients to apply mark-ups
+      allow write: if true; // Admin can update pricing multipliers
+    }
+
+    // 2. Users Collection
+    match /users/{username} {
+      allow read, write: if true;
+
+      // 3. User Subcollections (Orders, Transactions, Support cases)
+      match /orders/{orderId} {
+        allow read, write: if true;
+      }
+      match /transactions/{transactionId} {
+        allow read, write: if true;
+      }
+      match /tickets/{ticketId} {
+        allow read, write: if true;
+      }
+      match /withdrawals/{withdrawalId} {
+        allow read, write: if true;
+      }
+    }
+  }
+}
