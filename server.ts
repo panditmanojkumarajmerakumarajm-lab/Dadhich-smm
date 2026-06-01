@@ -28,7 +28,7 @@ function inferIconName(categoryName: string): string {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
   // Middlewares to parse JSON and urlencoded requests
   app.use(express.json());
