@@ -34,19 +34,53 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Helper to make live SMM Provider requests with standard browser headers to bypass automated bot guards (Cloudflare, etc.) on Render
-  const fetchFromProvider = async (bodyParams: Record<string, string>) => {
+  // Helper to make live SMM Provider requests with standard browser headers
+  // We use GET as primary because Cloudflare Bot WAF on Render blocks POST requests from hosting subnets but passes GET queries natively.
+  const fetchFromProvider = async (params: Record<string, string>) => {
+    // 1. Attempt GET Request
+    try {
+      const urlWithParams = new URL(PROVIDER_API_URL);
+      Object.entries(params).forEach(([k, v]) => {
+        urlWithParams.searchParams.append(k, v);
+      });
+
+      console.log(`[Provider Request] Routing via GET to: ${urlWithParams.origin}${urlWithParams.pathname}`);
+      const getResponse = await fetch(urlWithParams.toString(), {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "en-US,en;q=0.9"
+        }
+      });
+
+      if (getResponse.ok) {
+        const text = await getResponse.clone().text();
+        // Check if response is valid JSON rather than a Cloudflare challenge HTML dump
+        if (!text.includes("<!DOCTYPE html>") && !text.includes("<html") && text.trim().startsWith("{")) {
+          console.log("[Provider Request] GET routed successfully and parsed as JSON");
+          return getResponse;
+        } else {
+          console.warn("[Provider Request] GET returned non-JSON/HTML, falling back to POST...");
+        }
+      } else {
+        console.warn(`[Provider Request] GET failed with HTTP ${getResponse.status}, falling back to POST...`);
+      }
+    } catch (err: any) {
+      console.warn("[Provider Request] GET request encountered error:", err.message, "falling back to POST...");
+    }
+
+    // 2. Fallback POST request (used if GET is disabled, unsupported, or fails)
+    console.log("[Provider Request] Routing fallback POST to:", PROVIDER_API_URL);
     return fetch(PROVIDER_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "*/*",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Origin": "https://www.karanktech.com",
-        "Referer": "https://www.karanktech.com/"
+        "Accept-Language": "en-US,en;q=0.9"
       },
-      body: new URLSearchParams(bodyParams)
+      body: new URLSearchParams(params)
     });
   };
 
