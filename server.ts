@@ -34,18 +34,30 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Helper to make live SMM Provider requests with standard browser headers to bypass automated bot guards (Cloudflare, etc.) on Render
+  const fetchFromProvider = async (bodyParams: Record<string, string>) => {
+    return fetch(PROVIDER_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Origin": "https://www.karanktech.com",
+        "Referer": "https://www.karanktech.com/"
+      },
+      body: new URLSearchParams(bodyParams)
+    });
+  };
+
   // --- API proxy routes ---
 
   // 1. Get Provider Wallet Balance (API key checking and status indicator)
   app.get("/api/provider/balance", async (req, res) => {
     try {
-      const response = await fetch(PROVIDER_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          key: PROVIDER_API_KEY,
-          action: "balance"
-        })
+      const response = await fetchFromProvider({
+        key: PROVIDER_API_KEY,
+        action: "balance"
       });
 
       if (!response.ok) {
@@ -76,13 +88,9 @@ async function startServer() {
 
     try {
       console.log(`Fetching raw services from provider SMM panel: ${PROVIDER_API_URL} with margin ${marginPercent}%...`);
-      const response = await fetch(PROVIDER_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          key: PROVIDER_API_KEY,
-          action: "services"
-        })
+      const response = await fetchFromProvider({
+        key: PROVIDER_API_KEY,
+        action: "services"
       });
 
       if (!response.ok) {
@@ -163,16 +171,12 @@ async function startServer() {
 
     try {
       console.log(`Forwarding order request to SMM provider: ServiceID ${serviceId}, link ${link}, quantity ${quantity}...`);
-      const response = await fetch(PROVIDER_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          key: PROVIDER_API_KEY,
-          action: "add",
-          service: serviceId.toString(),
-          link: link,
-          quantity: quantity.toString()
-        })
+      const response = await fetchFromProvider({
+        key: PROVIDER_API_KEY,
+        action: "add",
+        service: serviceId.toString(),
+        link: link,
+        quantity: quantity.toString()
       });
 
       if (!response.ok) {
@@ -192,14 +196,10 @@ async function startServer() {
     const orderId = req.params.id;
 
     try {
-      const response = await fetch(PROVIDER_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          key: PROVIDER_API_KEY,
-          action: "status",
-          order: orderId
-        })
+      const response = await fetchFromProvider({
+        key: PROVIDER_API_KEY,
+        action: "status",
+        order: orderId
       });
 
       if (!response.ok) {
